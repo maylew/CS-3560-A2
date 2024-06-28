@@ -34,12 +34,14 @@ public class AdminPanel {
     public  void createUser(String userId) {
         if (!users.containsKey(userId)) {
             users.put(userId, new User(userId));
+            users.get(userId).setCreationTime(System.currentTimeMillis());
         }
         userTotal++;
     }
     public void createGroup(String groupId) {
         if (!groups.containsKey(groupId)) {
             groups.put(groupId, new UserGroup(groupId));
+            groups.get(groupId).setCreationTime(System.currentTimeMillis());
         }
         groupTotal++;
     }
@@ -74,6 +76,17 @@ public class AdminPanel {
     }
     public String getCurrentGroup() {
         return currentGroup;
+    }
+    public String getLastUpdatedUser() {
+        long max = 0;
+        String maxUser = "";
+        for(User user: users.values()){
+            if(max < user.getLastUpdateTime()){
+                max = user.getLastUpdateTime();
+                maxUser = user.getUserId();
+            }
+        }
+        return maxUser;
     }
     void buildUI() {
         frame = new JFrame("Admin Control Panel");
@@ -147,12 +160,24 @@ public class AdminPanel {
                 }
             }
         });
-
+       //verification button
+        JButton verifyUsersButton = new JButton("Verify Users");
+        verifyUsersButton.addActionListener(e -> {
+            boolean verified = true;
+            for(User user: users.values()){
+                if(user.getUserId().contains(" ")){
+                    verified = false;
+                    break;
+                }
+            }
+            showAlert("Verified", String.valueOf(verified));
+        });
         //the "left" panel of buttons
         inputPanel.add(userField);
         inputPanel.add(addUserButton);
         inputPanel.add(groupField);
         inputPanel.add(addGroupButton);
+        inputPanel.add(verifyUsersButton);
         inputPanel.add(openUserViewButton);
 
         frame.add(inputPanel, BorderLayout.CENTER);
@@ -174,11 +199,15 @@ public class AdminPanel {
         JButton positiveTweetsButton = new JButton("Show Positive Percentage");
         positiveTweetsButton.addActionListener(e -> showAlert("Positive Tweets %", String.format("%.2f%%", positiveMessagePercentage())));
 
+        JButton lastUpdatedButton = new JButton("Last Updated User");
+        lastUpdatedButton.addActionListener(e -> showAlert("Last Updated User", getLastUpdatedUser()));
+
         // the "right" panel of buttons
         statsPanel.add(totalUsersButton);
         statsPanel.add(totalGroupsButton);
         statsPanel.add(totalMessagesButton);
         statsPanel.add(positiveTweetsButton);
+        statsPanel.add(lastUpdatedButton);
 
         frame.add(statsPanel, BorderLayout.EAST);
 
@@ -247,12 +276,20 @@ public class AdminPanel {
                 newsFeedListModel.addElement(userId+": "+tweet);
                 tweetField.setText("");
                 messageTotal++;
-
+                users.get(userId).setLastUpdateTime(System.currentTimeMillis());
+                for (String Followers :  users.get(userId).getFollowers()){
+                    users.get(Followers).setLastUpdateTime(System.currentTimeMillis());
+                }
                 if(tweet.toLowerCase().contains("good")||tweet.toLowerCase().contains("great")||tweet.toLowerCase().contains("excellent")){
                     positiveMessageTotal++;
                 }
             }
         });
+
+         //update and creation times
+        JLabel creationTime = new JLabel("Creation Time: "+ users.get(userId).getCreationTime());
+        JLabel updateTime = new JLabel("Update Time: "+ users.get(userId).getLastUpdateTime());
+
 
         mainPanel.add(followPanel);
         mainPanel.add(followingsLabel);
@@ -260,6 +297,8 @@ public class AdminPanel {
         mainPanel.add(tweetPanel);
         mainPanel.add(newsFeedLabel);
         mainPanel.add(newsFeedScrollPane);
+        mainPanel.add(creationTime);
+        mainPanel.add(updateTime);
 
         userFrame.add(mainPanel);
         userFrame.setVisible(true);
